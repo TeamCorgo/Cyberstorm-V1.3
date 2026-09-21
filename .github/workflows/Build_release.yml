@@ -1,0 +1,62 @@
+name: Build Github release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+
+      - name: Apply v1.3 to GOG
+        run: |
+          python ./releases/CyberstormPatcher.py ./originals/GOG
+          New-Item -ItemType Directory -Force -Path ./pub/GOG
+          Get-ChildItem ./originals/GOG -File | Move-Item -Destination ./pub/GOG
+
+      - name: Apply v1.3 to v1.1
+        run: |
+          python ./releases/CyberstormPatcher.py ./originals/v1.1
+          New-Item -ItemType Directory -Force -Path ./pub/v1.1
+          Get-ChildItem ./originals/v1.1 -File | Move-Item -Destination ./pub/v1.1
+
+      - name: Apply v1.3 to v1.1_bxit
+        run: |
+          python ./releases/CyberstormPatcher.py ./originals/v1.1_bxit
+          New-Item -ItemType Directory -Force -Path ./pub/v1.1_bxit
+          Get-ChildItem ./originals/v1.1_bxit -File | Move-Item -Destination ./pub/v1.1_bxit
+
+      - name: Move releases into pub stageing folder
+        run: |
+          Get-ChildItem ./releases -File | Move-Item -Destination ./pub
+          Get-ChildItem ./patches.json -File | Move-Item -Destination ./pub
+
+      - name: Zip release
+        run: |
+          Compress-Archive `
+            -Path ./pub `
+            -DestinationPath ./pub/Cyberstorm-V1.3.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.30A
+          files: ./pub/Cyberstorm-V1.3.zip
+          generate_release_notes: true
