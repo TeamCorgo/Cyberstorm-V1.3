@@ -1,4 +1,4 @@
-name: Build Github release
+name: Build GitHub Release
 
 on:
   workflow_dispatch:
@@ -7,54 +7,46 @@ permissions:
   contents: write
 
 jobs:
-  build-windows:
+  build:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Copy releases into pub stageing folder
+      - name: Prepare release folders
+        shell: pwsh
         run: |
-          Get-ChildItem ./releases -File | Copy-Item -Destination ./pub
-          Get-ChildItem ./patches.json -File | Copy-Item -Destination ./pub
-          Get-ChildItem ./patches.json -File | Copy-Item -Destination ./releases/patches.json
+          Copy-Item ./releases/* ./pub/ -Force
+          Copy-Item ./patches.json ./pub/ -Force
+          Copy-Item ./patches.json ./releases/ -Force
 
-          New-Item -ItemType Directory -Force -Path ./pub/GOG
-          New-Item -ItemType Directory -Force -Path ./pub/v1.1
-          New-Item -ItemType Directory -Force -Path ./pub/v1.1_bxit
+          New-Item ./pub/GOG -ItemType Directory -Force
+          New-Item ./pub/v1.1 -ItemType Directory -Force
+          New-Item ./pub/v1.1_bxit -ItemType Directory -Force
 
-      - name: Apply v1.3 to GOG
+      - name: Apply patch
+        shell: pwsh
         run: |
           ./releases/CyberstormPatcher.exe ./originals/GOG
-
-      - name: Apply v1.3 to v1.1
-        run: |
           ./releases/CyberstormPatcher.exe ./originals/v1.1
-
-      - name: Apply v1.3 to v1.1_bxit
-        run: |
           ./releases/CyberstormPatcher.exe ./originals/v1.1_bxit
 
-      - name: Collect the files
+      - name: Collect patched files
+        shell: pwsh
         run: |
-          Get-ChildItem ./originals/GOG -File | 
-            Copy-Item -Destination ./pub/GOG -Force
+          Copy-Item ./originals/GOG/* ./pub/GOG/ -Force
+          Copy-Item ./originals/v1.1/* ./pub/v1.1/ -Force
+          Copy-Item ./originals/v1.1_bxit/* ./pub/v1.1_bxit/ -Force
 
-          Get-ChildItem ./originals/v1.1 -File | 
-            Copy-Item -Destination ./pub/v1.1 -Force
-
-          Get-ChildItem ./originals/v1.1_bxit -File | 
-            Copy-Item -Destination ./pub/v1.1_bxit -Force
-
-      - name: Zip release
+      - name: Create ZIP
+        shell: pwsh
         run: |
-          Compress-Archive `
-            -Path ./pub `
-            -DestinationPath ./pub/Cyberstorm-V1.3.zip
+          Compress-Archive -Path ./pub/* -DestinationPath ./Cyberstorm-V1.3.zip -Force
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.30A
-          files: ./pub/Cyberstorm-V1.3.zip
+          files: ./Cyberstorm-V1.3.zip
           generate_release_notes: true
