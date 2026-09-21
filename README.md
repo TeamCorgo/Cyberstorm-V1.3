@@ -8,7 +8,7 @@
 ## Installation Methods
 Two methods are available:
 1. **Direct file swap**
-   * Files are located in the `/bin` directory of this repository.
+   * Files are located in the Github **Releases** directory of this repository.
 2. **Patcher application**
    * **Python:**
      ```powershell
@@ -56,3 +56,7 @@ Some patches require multiple steps or modifications to non-contiguous memory re
 ## Deployment Options
 To support long-term endurance, the project provides multiple methods for users to choose from based on their specific use case. `.py` applications require Python to be installed, while `.exe` applications may require user trust as well as approval from the browser, antivirus software, and operating system. By offering multiple options, users can select the approach that best fits their environment and requirements. 
 
+## Github release process
+The GitHub workflow named `Build_exe.yml` converts the native Python application into an executable, removing the need for users to have Python installed. Once the executable artifact is created, it is uploaded to the repository’s `releases` folder.
+
+After both release methods (`.exe` and `.py`) have been verified to produce matching results, the release package can be constructed. The `Build_release.yml` workflow packages the release methods, `patches.json`, and the compiled outputs into a single downloadable ZIP file, which is then published in GitHub’s Releases section.
