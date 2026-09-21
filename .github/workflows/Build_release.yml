@@ -27,9 +27,6 @@ jobs:
         run: |
           ./releases/CyberstormPatcher.exe ./originals/GOG
 
-          Get-ChildItem ./originals/GOG -File | 
-            Copy-Item -Destination ./pub/GOG -Force
-
       - name: Apply v1.3 to v1.1
         run: |
           ./releases/CyberstormPatcher.exe ./originals/v1.1
