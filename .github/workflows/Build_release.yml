@@ -36,16 +36,12 @@ jobs:
       - name: Collect files
         shell: pwsh
         run: |
-          Copy-Item ./originals/GOG/* ./pub/GOG/ -Force
-          Copy-Item ./originals/v1.1/* ./pub/v1.1/ -Force
-          Copy-Item ./originals/v1.1_bxit/* ./pub/v1.1_bxit/ -Force
-
-      - name: Puge originals
-        shell: pwsh
-        run: |
-          Remove-Item ./pub/GOG/original -Recurse -Force -ErrorAction SilentlyContinue
-          Remove-Item ./pub/v1.1/original -Recurse -Force -ErrorAction SilentlyContinue
-          Remove-Item ./pub/v1.1_bxit/original -Recurse -Force -ErrorAction SilentlyContinue
+          Copy-Item ./originals/GOG/*.exe ./pub/GOG/ -Force
+          Copy-Item ./originals/GOG/*.dll ./pub/GOG/ -Force
+          Copy-Item ./originals/v1.1/*.exe ./pub/v1.1/ -Force
+          Copy-Item ./originals/v1.1/*.dll ./pub/v1.1/ -Force
+          Copy-Item ./originals/v1.1_bxit/*.exe ./pub/v1.1_bxit/ -Force
+          Copy-Item ./originals/v1.1_bxit/*.dll ./pub/v1.1_bxit/ -Force
 
       - name: Create ZIP
         shell: pwsh
