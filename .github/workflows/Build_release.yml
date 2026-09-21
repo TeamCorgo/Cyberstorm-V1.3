@@ -23,28 +23,34 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyinstaller
 
+      - name: Copy releases into pub stageing folder
+        run: |
+          Get-ChildItem ./releases -File | Copy-Item -Destination ./pub
+          Get-ChildItem ./patches.json -File | Copy-Item -Destination ./pub
+          
+          Get-ChildItem ./patches.json -File | Copy-Item -Destination ./originals/GOG/patches.json
+          Get-ChildItem ./patches.json -File | Copy-Item -Destination ./originals/v1.1/patches.json
+          Get-ChildItem ./patches.json -File | Copy-Item -Destination ./originals/v1.1_bxit/patches.json
+
       - name: Apply v1.3 to GOG
         run: |
           python ./releases/CyberstormPatcher.py ./originals/GOG
           New-Item -ItemType Directory -Force -Path ./pub/GOG
-          Get-ChildItem ./originals/GOG -File | Move-Item -Destination ./pub/GOG
+          Get-ChildItem ./originals/GOG -File | Copy-Item -Destination ./pub/GOG
 
       - name: Apply v1.3 to v1.1
         run: |
           python ./releases/CyberstormPatcher.py ./originals/v1.1
           New-Item -ItemType Directory -Force -Path ./pub/v1.1
-          Get-ChildItem ./originals/v1.1 -File | Move-Item -Destination ./pub/v1.1
+          Get-ChildItem ./originals/v1.1 -File | Copy-Item -Destination ./pub/v1.1
 
       - name: Apply v1.3 to v1.1_bxit
         run: |
           python ./releases/CyberstormPatcher.py ./originals/v1.1_bxit
           New-Item -ItemType Directory -Force -Path ./pub/v1.1_bxit
-          Get-ChildItem ./originals/v1.1_bxit -File | Move-Item -Destination ./pub/v1.1_bxit
+          Get-ChildItem ./originals/v1.1_bxit -File | Copy-Item -Destination ./pub/v1.1_bxit
 
-      - name: Move releases into pub stageing folder
-        run: |
-          Get-ChildItem ./releases -File | Move-Item -Destination ./pub
-          Get-ChildItem ./patches.json -File | Move-Item -Destination ./pub
+
 
       - name: Zip release
         run: |
