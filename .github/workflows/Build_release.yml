@@ -30,10 +30,16 @@ jobs:
           Get-ChildItem ./patches.json -File | Copy-Item -Destination ./releases/patches.json
 
       - name: Apply v1.3 to GOG
+        shell: pwsh
         run: |
           python ./releases/CyberstormPatcher.py ./originals/GOG
-          New-Item -ItemType Directory -Force -Path ./pub/GOG
-          Get-ChildItem ./originals/GOG -File | Copy-Item -Destination ./pub/GOG
+
+          $destination = Join-Path $PWD "pub/GOG"
+          New-Item -ItemType Directory -Force -Path $destination | Out-Null
+
+          Get-ChildItem -Path "./originals/GOG" -File |
+            Copy-Item -Destination $destination -Force
+
 
       - name: Apply v1.3 to v1.1
         run: |
