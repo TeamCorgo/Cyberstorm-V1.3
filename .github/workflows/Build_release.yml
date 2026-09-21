@@ -14,25 +14,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare release folders
+      - name: Prepare release
         shell: pwsh
         run: |
+          New-Item -ItemType Directory -Force -Path ./pub
+          New-Item -ItemType Directory -Force -Path ./pub/GOG
+          New-Item -ItemType Directory -Force -Path ./pub/v1.1
+          New-Item -ItemType Directory -Force -Path ./pub/v1.1_bxit
+
           Copy-Item ./releases/* ./pub/ -Force
           Copy-Item ./patches.json ./pub/ -Force
           Copy-Item ./patches.json ./releases/ -Force
 
-          New-Item ./pub/GOG -ItemType Directory -Force
-          New-Item ./pub/v1.1 -ItemType Directory -Force
-          New-Item ./pub/v1.1_bxit -ItemType Directory -Force
-
-      - name: Apply patch
+      - name: Apply patches
         shell: pwsh
         run: |
           ./releases/CyberstormPatcher.exe ./originals/GOG
           ./releases/CyberstormPatcher.exe ./originals/v1.1
           ./releases/CyberstormPatcher.exe ./originals/v1.1_bxit
 
-      - name: Collect patched files
+      - name: Collect files
         shell: pwsh
         run: |
           Copy-Item ./originals/GOG/* ./pub/GOG/ -Force
@@ -42,7 +43,10 @@ jobs:
       - name: Create ZIP
         shell: pwsh
         run: |
-          Compress-Archive -Path ./pub/* -DestinationPath ./Cyberstorm-V1.3.zip -Force
+          Compress-Archive `
+            -Path ./pub/* `
+            -DestinationPath ./Cyberstorm-V1.3.zip `
+            -Force
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
