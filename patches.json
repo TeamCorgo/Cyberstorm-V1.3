@@ -1,0 +1,112 @@
+{
+  "patches": [
+    {
+      "name": "Update About screen",
+      "file": "CSTORM.EXE",
+      "steps": [
+        {
+          "original": "57 69 6E 39 35",
+          "modified": "57 69 6E 31 31"
+        },
+        {
+          "original": "43 72 65 61 74 65 64 3A 20 44 65 63 20 31 33 20 31 39 39 36 20 31 33 3A 35 31 3A 33 31",
+          "modified": "43 6F 72 67 6F 2E 6F 72 67 3A 20 53 65 70 74 20 31 38 20 32 30 32 36 20 20 20 20 20 20",
+          "fallbacks": [
+            {
+              "original": "43 72 65 61 74 65 64 3A 20 4A 75 6E 20 31 32 20 31 39 39 36 20 32 33 3A 35 39 3A 33 32"
+            }
+          ]
+        },
+        {
+          "original": "01 00 00 00 0A 00 00 00 41 00 00 00 54 CA 00 00 88 EB 00 00",
+          "modified": "01 00 00 00 1E 00 00 00 41 00 00 00 54 CA 00 00 88 EB 00 00",
+          "fallbacks": [
+            {
+              "original": "01 00 00 00 00 00 00 00 41 00 00 00 54 CA 00 00 88 EB 00 00"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Remove Cyberstrom 2 Promotion",
+      "file": "CSTORM.EXE",
+      "original": "6A 00 B8 88 38",
+      "modified": "E9 6A 01 00 00",
+      "fallbacks": [
+        {
+          "original": "6A 00 B8 B0 25"
+        }
+      ]
+    },
+    {
+      "name": "Plasma Beam uses NBW animation and fire sound",
+      "file": "CSTORM.EXE",
+      "steps": [
+        {
+          "original": "4A 00 A0 2A 4A 00 84 29",
+          "modified": "4A 00 18 28 4A 00 84 29"
+        },
+        {
+          "original": "4A 00 C8 31 4A 00 E8 2E",
+          "modified": "4A 00 68 30 4A 00 E8 2E"
+        }
+      ]
+    },
+    {
+      "name": "All weapons damage a hex on a miss",
+      "file": "CSTORM.EXE",
+      "original": "3D 00 0F 84 8F 00 00 00 85 F6",
+      "modified": "3D 00 90 90 90 90 90 90 85 F6"
+    },
+    {
+      "name": "Uncharged weapons don't trigger enemy reaction fire",
+      "file": "CSTORM.EXE",
+      "steps": [
+        {
+          "original": "89 55 6E 85 D2 74 4B 8B 9D 8E",
+          "modified": "89 55 6E 85 D2 90 90 8B 9D 8E"
+        },
+        {
+          "original": "89 45 72 31 DB 85 FF 7E 0E 56 E8",
+          "modified": "89 45 72 31 DB 21 C7 7E 0E 56 E8"
+        },
+        {
+          "original": "39 FB 7C F2 83 7D 6E 00 75 47 8B",
+          "modified": "39 FB 7C F2 83 7D 6E 00 EB 47 8B"
+        }
+      ]
+    },
+    {
+      "name": "Corrected Image Enhancement weight",
+      "file": "CSTORM.EXE",
+      "original": "09 07 A4 01 00 00 64 00 01 09 64 21 0C 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "modified": "09 07 A4 01 00 00 64 00 01 09 64 21 0C 00 00 00 00 00 00 00 00 00 00 0E 01 00 00"
+    },
+    {
+      "name": "SE700 Laser Gatling uses SE660 animation",
+      "file": "CSTORM.EXE",
+      "original": "CC 29 4A 00 B8 2B 4A 00 2C 2B 4A 00",
+      "modified": "CC 29 4A 00 B8 27 4A 00 2C 2B 4A 00"
+    },
+    {
+      "name": "Modern file dialog (Open/Save)",
+      "file": "CWARSDLL.DLL",
+      "steps": [
+        {
+          "original": "8B 45 14 0C 20 09 07",
+          "modified": "8B 45 14 0C 00 09 07"
+        },
+        {
+          "original": "C7 80 88 00 00 00 10 12 00 10",
+          "modified": "C7 80 88 00 00 00 00 00 00 00",
+          "fallbacks": [
+            {
+              "original": "C7 80 88 00 00 00 C1 6E 01 10"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
