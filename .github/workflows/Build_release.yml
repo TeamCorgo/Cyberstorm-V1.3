@@ -13,41 +13,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller
-
       - name: Copy releases into pub stageing folder
         run: |
           Get-ChildItem ./releases -File | Copy-Item -Destination ./pub
           Get-ChildItem ./patches.json -File | Copy-Item -Destination ./pub
           Get-ChildItem ./patches.json -File | Copy-Item -Destination ./releases/patches.json
 
+          New-Item -ItemType Directory -Force -Path ./pub/GOG
+          New-Item -ItemType Directory -Force -Path ./pub/v1.1
+          New-Item -ItemType Directory -Force -Path ./pub/v1.1_bxit
 
       - name: Apply v1.3 to GOG
-        shell: pwsh
         run: |
           ./releases/CyberstormPatcher.exe ./originals/GOG
 
+          Get-ChildItem ./originals/GOG -File | 
+            Copy-Item -Destination ./pub/GOG -Force
+
       - name: Apply v1.3 to v1.1
         run: |
-          python ./releases/CyberstormPatcher.py ./originals/v1.1
-          New-Item -ItemType Directory -Force -Path ./pub/v1.1
-          Get-ChildItem ./originals/v1.1 -File | Copy-Item -Destination ./pub/v1.1
+          ./releases/CyberstormPatcher.exe ./originals/v1.1
 
       - name: Apply v1.3 to v1.1_bxit
         run: |
-          python ./releases/CyberstormPatcher.py ./originals/v1.1_bxit
-          New-Item -ItemType Directory -Force -Path ./pub/v1.1_bxit
-          Get-ChildItem ./originals/v1.1_bxit -File | Copy-Item -Destination ./pub/v1.1_bxit
+          ./releases/CyberstormPatcher.exe ./originals/v1.1_bxit
 
+      - name: Collect the files
+        run: |
+          Get-ChildItem ./originals/GOG -File | 
+            Copy-Item -Destination ./pub/GOG -Force
 
+          Get-ChildItem ./originals/v1.1 -File | 
+            Copy-Item -Destination ./pub/v1.1 -Force
+
+          Get-ChildItem ./originals/v1.1_bxit -File | 
+            Copy-Item -Destination ./pub/v1.1_bxit -Force
 
       - name: Zip release
         run: |
