@@ -40,6 +40,13 @@ jobs:
           Copy-Item ./originals/v1.1/* ./pub/v1.1/ -Force
           Copy-Item ./originals/v1.1_bxit/* ./pub/v1.1_bxit/ -Force
 
+      - name: Puge originals
+        shell: pwsh
+        run: |
+          Remove-Item ./pub/GOG/orignal -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item ./pub/v1.1/orignal -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item ./pub/v1.1_bxit/orignal -Recurse -Force -ErrorAction SilentlyContinue
+
       - name: Create ZIP
         shell: pwsh
         run: |
