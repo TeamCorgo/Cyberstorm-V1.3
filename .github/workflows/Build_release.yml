@@ -43,9 +43,9 @@ jobs:
       - name: Puge originals
         shell: pwsh
         run: |
-          Remove-Item ./pub/GOG/orignal -Recurse -Force -ErrorAction SilentlyContinue
-          Remove-Item ./pub/v1.1/orignal -Recurse -Force -ErrorAction SilentlyContinue
-          Remove-Item ./pub/v1.1_bxit/orignal -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item ./pub/GOG/original -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item ./pub/v1.1/original -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item ./pub/v1.1_bxit/original -Recurse -Force -ErrorAction SilentlyContinue
 
       - name: Create ZIP
         shell: pwsh
