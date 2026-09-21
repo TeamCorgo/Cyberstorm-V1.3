@@ -33,15 +33,7 @@ jobs:
       - name: Apply v1.3 to GOG
         shell: pwsh
         run: |
-          python ./releases/CyberstormPatcher.py ./originals/GOG
-
-          $destination = Join-Path $env:GITHUB_WORKSPACE "pub\GOG"
-
-          New-Item -ItemType Directory -Path $destination -Force | Out-Null
-
-          Get-ChildItem "./originals/GOG" -File | ForEach-Object {
-            Copy-Item -LiteralPath $_.FullName -Destination $destination -Force
-          }
+          ./releases/CyberstormPatcher.exe ./originals/GOG
 
       - name: Apply v1.3 to v1.1
         run: |
