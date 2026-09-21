@@ -30,19 +30,18 @@ jobs:
           Get-ChildItem ./patches.json -File | Copy-Item -Destination ./releases/patches.json
 
 
-        - name: Apply v1.3 to GOG
-          shell: pwsh
-          run: |
-            python ./releases/CyberstormPatcher.py ./originals/GOG
+      - name: Apply v1.3 to GOG
+        shell: pwsh
+        run: |
+          python ./releases/CyberstormPatcher.py ./originals/GOG
 
-            $destination = Join-Path $env:GITHUB_WORKSPACE "pub\GOG"
+          $destination = Join-Path $env:GITHUB_WORKSPACE "pub\GOG"
 
-            New-Item -ItemType Directory -Path $destination -Force | Out-Null
+          New-Item -ItemType Directory -Path $destination -Force | Out-Null
 
-            Get-ChildItem "./originals/GOG" -File | ForEach-Object {
-              Copy-Item -LiteralPath $_.FullName -Destination $destination -Force
-            }
-
+          Get-ChildItem "./originals/GOG" -File | ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination $destination -Force
+          }
 
       - name: Apply v1.3 to v1.1
         run: |
