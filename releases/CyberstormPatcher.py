@@ -1,20 +1,21 @@
 import argparse
 import json
 import shutil
-from pathlib import Path
 import sys
+from pathlib import Path
+from typing import Any
 
 
-def load_patches() -> list[dict]:
-    """Load patches.json (next to the exe/script, else the bundled copy).
+# ---------------------------------------------------------------------------
+# Patch configuration
+# ---------------------------------------------------------------------------
 
-    Byte fields ("original", "modified") are hex strings such as
-    "01 00 00 00 0A"; they are converted to bytes here.
-    """
-    candidates = [Path(sys.executable if getattr(sys, "frozen", False) else __file__).resolve().parent / "patches.json"]
-
-    if hasattr(sys, "_MEIPASS"):
-        candidates.append(Path(sys._MEIPASS) / "patches.json")
+def load_patches() -> list[dict[str, Any]]:
+    """Load and decode patches.json."""
+    candidates = (
+        Path.cwd() / "patches.json",
+        Path(__file__).resolve().parent / "patches.json",
+    )
 
     for path in candidates:
         if path.is_file():
@@ -22,21 +23,33 @@ def load_patches() -> list[dict]:
     else:
         raise FileNotFoundError("patches.json not found")
 
-    def to_bytes(node):
+    def decode(node: Any) -> Any:
         if isinstance(node, dict):
             return {
-                k: bytes.fromhex(v) if k in ("original", "modified") else to_bytes(v)
-                for k, v in node.items()
+                key: (
+                    bytes.fromhex(value)
+                    if key in ("original", "modified")
+                    else decode(value)
+                )
+                for key, value in node.items()
             }
+
         if isinstance(node, list):
-            return [to_bytes(v) for v in node]
+            return [decode(value) for value in node]
+
         return node
 
-    return to_bytes(json.loads(path.read_text(encoding="utf-8")))["patches"]
+    return decode(
+        json.loads(path.read_text(encoding="utf-8"))
+    )["patches"]
 
 
 PATCHES = load_patches()
 
+
+# ---------------------------------------------------------------------------
+# Byte utilities
+# ---------------------------------------------------------------------------
 
 def find_matches(data: bytes, pattern: bytes) -> list[int]:
     """Return every offset where pattern occurs in data."""
@@ -47,46 +60,59 @@ def find_matches(data: bytes, pattern: bytes) -> list[int]:
         offset = data.find(pattern, start)
 
         if offset == -1:
-            break
+            return matches
 
         matches.append(offset)
         start = offset + 1
 
-    return matches
-
-
-def patch_steps(patch: dict) -> list[dict]:
-    """A patch is either one edit (original/modified) or a list of steps."""
-    return patch.get("steps") or [patch]
-
 
 def hex_bytes(data: bytes) -> str:
-    return " ".join(f"{b:02X}" for b in data)
+    return " ".join(f"{byte:02X}" for byte in data)
 
 
-def describe_mismatch(data: bytes, original: bytes, modified: bytes) -> str:
-    """Explain why `original` was not found: what is in the file instead."""
-    already = find_matches(data, modified) if modified != original else []
+def describe_mismatch(
+    data: bytes,
+    original: bytes,
+    modified: bytes,
+) -> str:
+    """Explain why original bytes were not found."""
+    # Check whether the patch has already been applied.
+    if modified != original:
+        already = find_matches(data, modified)
 
-    if already:
-        where = ", ".join(f"0x{o:X}" for o in already[:3])
-        return f"the patched bytes are already present @ {where}"
+        if already:
+            locations = ", ".join(
+                f"0x{offset:X}"
+                for offset in already[:3]
+            )
+
+            return (
+                f"the patched bytes are already present "
+                f"@ {locations}"
+            )
 
     size = len(original)
     candidates = []
 
-    # Anchor on the longest prefix / suffix of the pattern that does exist.
+    # Find the closest matching prefix/suffix.
     for length in range(size - 1, 2, -1):
-        for start in find_matches(data, original[:length])[:5]:
-            candidates.append(start)
+        candidates.extend(
+            find_matches(data, original[:length])[:5]
+        )
 
-        for hit in find_matches(data, original[size - length:])[:5]:
-            candidates.append(hit - (size - length))
+        candidates.extend(
+            hit - (size - length)
+            for hit in find_matches(
+                data,
+                original[size - length:],
+            )[:5]
+        )
 
         if candidates:
             break
 
-    best_start, best_score = None, 0
+    best_start = None
+    best_score = 0
 
     for start in candidates:
         window = data[max(start, 0):start + size]
@@ -94,122 +120,167 @@ def describe_mismatch(data: bytes, original: bytes, modified: bytes) -> str:
         if start < 0 or len(window) != size:
             continue
 
-        score = sum(1 for a, b in zip(window, original) if a == b)
+        score = sum(
+            actual == expected
+            for actual, expected
+            in zip(window, original)
+        )
 
         if score > best_score:
-            best_start, best_score = start, score
+            best_start = start
+            best_score = score
 
     if best_start is None:
         return "no similar bytes found anywhere in the file"
 
     found = data[best_start:best_start + size]
+
     marker = " ".join(
-        "  " if a == b else "^^" for a, b in zip(found, original)
+        "  " if actual == expected else "^^"
+        for actual, expected
+        in zip(found, original)
     )
 
     return (
-        f"closest match @ 0x{best_start:X} ({best_score}/{size} bytes agree)\n"
+        f"closest match @ 0x{best_start:X} "
+        f"({best_score}/{size} bytes agree)\n"
         f"      expected: {hex_bytes(original)}\n"
         f"      found:    {hex_bytes(found)}\n"
-        f"                {marker}"
+        f"                  {marker}"
     )
 
 
-def apply_step(data: bytearray, label: str, step: dict) -> int:
-    # The primary original comes first; each optional fallback is tried, in
-    # order, only when the previous candidates are not present in the file.
-    # A fallback may give its own "modified"; otherwise the step's is used.
-    candidates = [(step["original"], step["modified"])]
+# ---------------------------------------------------------------------------
+# Patch application
+# ---------------------------------------------------------------------------
+
+def patch_candidates(
+    step: dict[str, Any],
+) -> list[tuple[bytes, bytes]]:
+    """Return the primary patch followed by its fallbacks."""
+    modified = step["modified"]
+
+    candidates = [
+        (step["original"], modified)
+    ]
 
     for fallback in step.get("fallbacks", []):
         candidates.append(
-            (fallback["original"], fallback.get("modified", step["modified"]))
+            (
+                fallback["original"],
+                fallback.get("modified", modified),
+            )
         )
 
+    return candidates
+
+
+def apply_step(
+    data: bytearray,
+    label: str,
+    step: dict[str, Any],
+) -> int:
+    """Apply one patch step and return its offset."""
+    candidates = patch_candidates(step)
+
+    # Validate lengths before modifying anything.
     for original, modified in candidates:
         if len(original) != len(modified):
             raise ValueError(
-                f"{label}: original and modified byte lengths differ."
+                f"{label}: original and modified "
+                f"byte lengths differ."
             )
+
+    selected = None
+    offset = None
 
     for original, modified in candidates:
         matches = find_matches(data, original)
 
         if len(matches) > 1:
-            offsets = ", ".join(f"0x{o:X}" for o in matches[:8])
+            locations = ", ".join(
+                f"0x{value:X}"
+                for value in matches[:8]
+            )
+
             raise ValueError(
-                f"{label}: expected exactly 1 match, found {len(matches)} "
-                f"@ {offsets}."
+                f"{label}: expected exactly 1 match, "
+                f"found {len(matches)} @ {locations}."
             )
 
         if matches:
+            selected = (original, modified)
+            offset = matches[0]
             break
-    else:
-        primary_original, primary_modified = candidates[0]
-        tried = (
-            f" (also tried {len(candidates) - 1} fallback"
-            f"{'' if len(candidates) == 2 else 's'})"
-            if len(candidates) > 1
+
+    if selected is None:
+        original, modified = candidates[0]
+
+        fallback_count = len(candidates) - 1
+
+        suffix = (
+            f" (also tried {fallback_count} "
+            f"fallback{'s' if fallback_count != 1 else ''})"
+            if fallback_count
             else ""
         )
 
         raise ValueError(
-            f"{label}: expected bytes not found{tried}.\n"
-            f"    {describe_mismatch(bytes(data), primary_original, primary_modified)}"
+            f"{label}: expected bytes not found{suffix}.\n"
+            f"    {describe_mismatch(data, original, modified)}"
         )
 
-    offset = matches[0]
+    _, modified = selected
 
     data[offset:offset + len(modified)] = modified
 
-    # Verify modification.
+    # Verify the modification.
     if data[offset:offset + len(modified)] != modified:
-        raise ValueError(f"{label}: verification failed.")
+        raise ValueError(
+            f"{label}: verification failed."
+        )
 
     return offset
 
 
-def apply_patch(data: bytearray, patch: dict) -> list[int]:
-    """Apply every step of a patch; return the offset of each step."""
-    steps = patch_steps(patch)
+def apply_patch(
+    data: bytearray,
+    patch: dict[str, Any],
+) -> list[int]:
+    """Apply every step in a patch and return their offsets."""
+    steps = patch.get("steps") or [patch]
     offsets = []
 
     for number, step in enumerate(steps, start=1):
         label = f'"{patch["name"]}"'
 
         if len(steps) > 1:
-            note = f': {step["note"]}' if "note" in step else ""
-            label += f" (step {number}/{len(steps)}{note})"
+            note = (
+                f': {step["note"]}'
+                if "note" in step
+                else ""
+            )
 
-        offsets.append(apply_step(data, label, step))
+            label += (
+                f" (step {number}/{len(steps)}{note})"
+            )
+
+        offsets.append(
+            apply_step(data, label, step)
+        )
 
     return offsets
 
 
-def find_file(folder: Path, name: str) -> Path | None:
-    """Find a file by name (any case) in folder, else in its subfolders."""
-    for candidates in (folder.iterdir(), folder.rglob("*")):
-        for path in sorted(candidates):
-            if path.is_file() and path.name.upper() == name.upper():
-                return path
+def patch_file(
+    source_path: Path,
+    patches: list[dict[str, Any]],
+) -> tuple[bytearray, list[str]]:
+    """
+    Patch a file in memory.
 
-    return None
-
-
-def backup_original(exe_path: Path) -> Path:
-    """Copy the exe into an 'original' folder beside it (never overwrites)."""
-    backup_dir = exe_path.parent / "original"
-    backup_dir.mkdir(exist_ok=True)
-    backup_path = backup_dir / exe_path.name
-
-    if not backup_path.exists():
-        shutil.copy2(exe_path, backup_path)
-
-    return backup_path
-
-
-def patch_file(source_path: Path, patches: list) -> tuple[bytearray, list]:
-    """Apply patches to the bytes of source_path; nothing is written."""
+    Nothing is written to disk.
+    """
     data = bytearray(source_path.read_bytes())
     results = []
 
@@ -217,15 +288,171 @@ def patch_file(source_path: Path, patches: list) -> tuple[bytearray, list]:
         offsets = apply_patch(data, patch)
 
         results.append(
-            f'{source_path.name}: steps({len(offsets)}): {patch["name"]}'
+            f"{source_path.name}: "
+            f"steps({len(offsets)}): "
+            f"{patch['name']}"
         )
 
     return data, results
 
 
+# ---------------------------------------------------------------------------
+# File management
+# ---------------------------------------------------------------------------
+
+def find_file(
+    folder: Path,
+    name: str,
+) -> Path | None:
+    """Find a file by name, case-insensitively."""
+    target = name.casefold()
+
+    for path in sorted(folder.rglob("*")):
+        if path.is_file() and path.name.casefold() == target:
+            return path
+
+    return None
+
+
+def ensure_original_backup(
+    game_path: Path,
+) -> tuple[Path, bool]:
+    """
+    Ensure a pristine original backup exists.
+
+    Returns:
+        (backup_path, created)
+    """
+    backup_dir = game_path.parent / "original"
+    backup_dir.mkdir(exist_ok=True)
+
+    backup_path = backup_dir / game_path.name
+
+    if backup_path.exists():
+        return backup_path, False
+
+    shutil.copy2(game_path, backup_path)
+
+    return backup_path, True
+
+
+def create_mods_folder(
+    game_path: Path,
+) -> Path:
+    """Create and return the mods folder."""
+    mods_dir = game_path.parent / "mods"
+    mods_dir.mkdir(exist_ok=True)
+
+    return mods_dir
+
+
+# ---------------------------------------------------------------------------
+# Patch organization
+# ---------------------------------------------------------------------------
+
+def group_patches(
+    patches: list[dict[str, Any]],
+) -> dict[str, list[dict[str, Any]]]:
+    """Group patches by target filename."""
+    grouped = {}
+
+    for patch in patches:
+        grouped.setdefault(
+            patch["file"],
+            [],
+        ).append(patch)
+
+    return grouped
+
+
+def build_jobs(
+    folder: Path,
+    grouped: dict[str, list[dict[str, Any]]],
+) -> list[tuple[Path, list[dict[str, Any]]]]:
+    """Find every target file and build patch jobs."""
+    jobs = []
+
+    for name, patches in grouped.items():
+        game_path = find_file(folder, name)
+
+        if game_path is None:
+            raise FileNotFoundError(
+                f"{name} not found in {folder}"
+            )
+
+        jobs.append((game_path, patches))
+
+    return jobs
+
+
+# ---------------------------------------------------------------------------
+# Main patching pipeline
+# ---------------------------------------------------------------------------
+
+def prepare_patch(
+    game_path: Path,
+    patches: list[dict[str, Any]],
+) -> tuple[Path, bytearray, list[str], bool]:
+    """
+    Create the original backup if necessary and patch it in memory.
+
+    Returns:
+        backup path,
+        patched bytes,
+        result messages,
+        whether the backup was newly created.
+    """
+    create_mods_folder(game_path)
+
+    backup_path, created = ensure_original_backup(game_path)
+
+    data, results = patch_file(
+        backup_path,
+        patches,
+    )
+
+    return (
+        backup_path,
+        data,
+        results,
+        created,
+    )
+
+
+def write_patched_files(
+    patched: list[tuple[Path, bytearray]],
+) -> None:
+    """Write all successfully prepared files to disk."""
+    for game_path, data in patched:
+        game_path.write_bytes(data)
+        print(f"Replaced: {game_path}")
+
+
+def print_patch_list(
+    grouped: dict[str, list[dict[str, Any]]],
+) -> None:
+    print("Files to modify:")
+
+    for name, patches in grouped.items():
+        noun = (
+            "patch"
+            if len(patches) == 1
+            else "patches"
+        )
+
+        print(
+            f"  {name} "
+            f"({len(patches)} {noun})"
+        )
+
+    print()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Cyberstrom v1.3 offline EXE patcher."
+        description=(
+            "Cyberstrom v1.3 offline EXE patcher."
+        )
     )
 
     parser.add_argument(
@@ -235,66 +462,112 @@ def main() -> int:
     )
 
     args = parser.parse_args()
-
     folder = args.folder
 
     if not folder.is_dir():
-        print(f"Error: folder does not exist: {folder}", file=sys.stderr)
+        print(
+            f"Error: folder does not exist: {folder}",
+            file=sys.stderr,
+        )
         return 1
 
-    # Group patches by the file they modify, preserving order.
-    by_file: dict[str, list] = {}
+    try:
+        patches = load_patches()
+    except Exception as exc:
+        print(
+            f"Error loading patches.json: {exc}",
+            file=sys.stderr,
+        )
+        return 1
 
-    for patch in PATCHES:
-        by_file.setdefault(patch["file"], []).append(patch)
+    grouped = group_patches(patches)
 
-    print("Files to modify:")
-    for name, patches in by_file.items():
-        noun = "patch" if len(patches) == 1 else "patches"
-        print(f"  {name} ({len(patches)} {noun})")
+    print_patch_list(grouped)
+
+    # Locate everything before modifying anything.
+    try:
+        jobs = build_jobs(
+            folder,
+            grouped,
+        )
+    except FileNotFoundError as exc:
+        print(
+            f"Error: {exc}",
+            file=sys.stderr,
+        )
+        return 1
+
+    for game_path, _ in jobs:
+        print(f"Found: {game_path}")
+
     print()
 
-    jobs = []
-
-    for name, patches in by_file.items():
-        game_path = find_file(folder, name)
-
-        if game_path is None:
-            print(f"Error: {name} not found in {folder}", file=sys.stderr)
-            return 1
-
-        print(f"Found: {game_path}")
-        jobs.append((game_path, patches))
-
-    # Back up first, then patch from the pristine backup so re-running the
-    # patcher works even when the game file is already patched.
+    # Patch every file in memory.
+    # Nothing is replaced until ALL jobs succeed.
     patched = []
     all_results = []
 
-    for game_path, patches in jobs:
-        backup_path = backup_original(game_path)
-        print(f"Backup: {backup_path}")
-
+    for game_path, file_patches in jobs:
         try:
-            data, results = patch_file(backup_path, patches)
+            (
+                backup_path,
+                data,
+                results,
+                created,
+            ) = prepare_patch(
+                game_path,
+                file_patches,
+            )
+
         except Exception as exc:
-            print("Patch aborted. No files were modified.", file=sys.stderr)
-            print(file=sys.stderr)
-            print(f"{game_path.name}: {exc}", file=sys.stderr)
+            print(
+                "Patch aborted. "
+                "No files were modified.",
+                file=sys.stderr,
+            )
+
+            print(
+                f"{game_path.name}: {exc}",
+                file=sys.stderr,
+            )
+
             return 1
 
-        patched.append((game_path, data))
-        all_results += results
+        if created:
+            print(
+                f"Created original backup: "
+                f"{backup_path}"
+            )
+        else:
+            print(
+                f"Using original backup: "
+                f"{backup_path}"
+            )
 
-    # Every file patched cleanly in memory; now replace the game files.
-    for game_path, data in patched:
-        game_path.write_bytes(data)
-        print(f"Replaced: {game_path}")
+        patched.append(
+            (game_path, data)
+        )
+
+        all_results.extend(results)
+
+    # All patches succeeded in memory.
+    write_patched_files(patched)
 
     print()
     print("Patching successful.")
     print()
-    print("\n".join(all_results))
+    print(
+        f"Applied {len(all_results)} "
+        f"patch{'es' if len(all_results) != 1 else ''}."
+    )
+    print()
+    print(
+        "The tool can be safely run again."
+    )
+    print()
+
+    for result in all_results:
+        print(f"  {result}")
 
     return 0
 
