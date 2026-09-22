@@ -30,7 +30,7 @@ Two methods are available:
    Gives the Plasma Beam the **Neutron Beam Weapon** projectile animation and firing sound.
 
 4. **All Weapons Damage a Hex on a Miss**
-   On a miss, the weapon damages the hex where the projectile lands. This allows all weapons, not just missiles, to damage the unit on the landed hex.
+   On a miss, the weapon damages the hex where the projectile lands. This allows all weapons, not just missiles, to damage the unit on the landed hex. Extra logic is needed to prevents the game playing 'hit' SFX even on complete misses.
 
 5. **Uncharged Weapons Don't Trigger Enemy Reaction Fire**
    Prevents the player from using an uncharged weapon to bait a Cybrid into taking opportunity fire, while also preventing multiple reaction-fire opportunities from a single attack.

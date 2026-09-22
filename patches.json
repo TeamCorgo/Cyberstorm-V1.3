@@ -56,8 +56,20 @@
     {
       "name": "All weapons damage a hex on a miss",
       "file": "CSTORM.EXE",
-      "original": "3D 00 0F 84 8F 00 00 00 85 F6",
-      "modified": "3D 00 90 90 90 90 90 90 85 F6"
+      "steps": [
+        {
+          "original": "3D 00 0F 84 8F 00 00 00 85 F6",
+          "modified": "3D 00 90 90 90 90 90 90 85 F6"
+        },
+        {
+          "original": "78 55 51 00 FF 25 48 55 51 00 FF 25 68 55 51 00 FF 25 5C 55 51 00 FF 25 40 55 51 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+          "modified": "78 55 51 00 FF 25 48 55 51 00 FF 25 68 55 51 00 FF 25 5C 55 51 00 FF 25 40 55 51 00 00 00 00 00 A1 DC 35 4D 00 8B 04 D8 85 C0 7E 19 6A 64 6A 28 6A 02 A1 00 CC 4D 00 50 68 D8 CB 4D 00 E8 2E 46 FD FF 83 C4 14 E9 1C 2E FD FF"
+        },
+        {
+          "original": "6A 64 6A 28 6A 02 A1 00 CC 4D 00 50 68 D8 CB 4D 00 E8 0D 18 00 00 83 C4 14",
+          "modified": "E9 CE D1 02 00 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90"
+        }
+      ]
     },
     {
       "name": "Uncharged weapons don't trigger enemy reaction fire",
