@@ -42,6 +42,9 @@ jobs:
           Copy-Item ./originals/v1.1/*.dll ./pub/v1.1/ -Force
           Copy-Item ./originals/v1.1_bxit/*.exe ./pub/v1.1_bxit/ -Force
           Copy-Item ./originals/v1.1_bxit/*.dll ./pub/v1.1_bxit/ -Force
+          New-Item -ItemType Directory -Force -Path ./pub/GOG/mods
+          New-Item -ItemType Directory -Force -Path ./pub/v1.1/mods
+          New-Item -ItemType Directory -Force -Path ./pub/v1.1_bxit/mods
 
       - name: Create ZIP
         shell: pwsh
