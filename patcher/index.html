@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Missionforce: Cyberstorm V1.3 Patcher</title>
+<link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+<main>
+  <h1>Missionforce: Cyberstorm V1.3 Patcher</h1>
+  <p class="sub">Adds the community patch to your copy of the game. Everything happens locally in your browser; nothing is ever uploaded. The community patch cannot be played without the user owning a copy of Missionforce: Cyberstorm.</p>
+  <label class="drop" id="drop">
+    <input type="file" id="file" accept=".exe">
+    <strong>Drop your V1.1 game .exe here</strong>
+    <span>or click to choose it</span>
+  </label>
+
+  <div class="card" id="result" hidden>
+    <h2>Result</h2>
+    <div class="status" id="status"></div>
+    <dl id="info"></dl>
+    <div class="log" id="log"></div>
+    <button id="dl" disabled>Download zip</button>
+  </div>
+
+  <div class="card">
+    <h2>How to install</h2>
+    <ol>
+      <li>Convert your original game .exe.</li>
+      <li>Download the zip file containing the V1.3 files.</li>
+      <li>Extract the zip into the game folder.</li>
+      <li>Let the patched CSTORM.EXE replace the original.</li>
+      <li>Launch the game and configure the options from the in-game menu (Help → Mods).</li>
+    </ol>
+  </div>
+
+  <footer id="foot"></footer>
+</main>
+
+<script src="./js/zip.js"></script>
+<script src="./js/json.js"></script>
+<script src="./js/exe.js"></script>
+<script src="./js/patcher.js"></script>
+</body>
+</html>
